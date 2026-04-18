@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Node.js SDK for sending Bulk SMS using SMS Bulk TZ API",
   "main": "index.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "sms",
     "bulk sms",
