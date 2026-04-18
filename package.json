@@ -12,6 +12,7 @@
   ],
   "author": "Lazack Organisation",
   "license": "MIT",
+  "private": false,
   "dependencies": {
     "axios": "^1.6.0"
   },
