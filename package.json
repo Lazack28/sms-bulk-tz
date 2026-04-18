@@ -1,5 +1,5 @@
 {
-  "name": "sms-bulk-tz",
+  "name": "@lazack28/sms-bulk-tz",
   "version": "1.0.0",
   "description": "Node.js SDK for sending Bulk SMS using SMS Bulk TZ API",
   "main": "index.js",
