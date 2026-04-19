@@ -29,12 +29,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/sms-bulk-tz.git"
+    "url": "https://github.com/Lazack28/sms-bulk-tz.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/sms-bulk-tz/issues"
+    "url": "https://github.com/Lazack28/sms-bulk-tz/issues"
   },
-  "homepage": "https://github.com/your-username/sms-bulk-tz#readme",
+  "homepage": "https://github.com/Lazack28/sms-bulk-tz#readme",
   "engines": {
     "node": ">=14.0.0"
   },
