@@ -1,6 +1,6 @@
 {
   "name": "sms-bulk-tz",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A production-ready Node.js client for the TAPSA Bulk SMS API — send single or bulk SMS messages to Tanzanian phone numbers with retry, validation, and structured error handling.",
   "main": "index.js",
   "types": "index.d.ts",
