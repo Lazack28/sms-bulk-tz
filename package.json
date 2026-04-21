@@ -1,5 +1,5 @@
 {
-  "name": "tapsa-bulk-sms",
+  "name": "sms-bulk-tz",
   "version": "1.0.4",
   "description": "Official Node.js client library for TAPSA Bulk SMS API - Send SMS messages and check account balance in Tanzania",
   "main": "index.js",
