@@ -1,66 +1,50 @@
 {
   "name": "sms-bulk-tz",
-  "version": "1.0.2",
-  "description": "A production-ready Node.js client for the TAPSA Bulk SMS API — send single or bulk SMS messages to Tanzanian phone numbers with retry, validation, and structured error handling.",
+  "version": "1.0.0",
+  "description": "TAPSA SMS client for sending single and bulk SMS to Tanzanian numbers",
   "main": "index.js",
-  "types": "index.d.ts",
-  "publishConfig":{
-    "access": "public"
-  },
-  "exports": {
-    ".": {
-      "require": "./index.js"
-    }
-  },
   "scripts": {
+    "start": "node index.js",
     "test": "jest --coverage",
-    "test:watch": "jest --watch",
-    "lint": "eslint index.js",
-    "lint:fix": "eslint index.js --fix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "diagnose": "node scripts/diagnose.js",
+    "prepublishOnly": "npm test && npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lazack28/sms-bulk-tz.git"
   },
   "keywords": [
     "sms",
-    "bulk-sms",
     "tanzania",
     "tapsa",
-    "sms-api",
-    "messaging",
-    "tz",
-    "255"
+    "bulk-sms"
   ],
-  "author": "",
+  "author": "Your Name <you@example.com>",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Lazack28/sms-bulk-tz.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Lazack28/sms-bulk-tz/issues"
-  },
-  "homepage": "https://github.com/Lazack28/sms-bulk-tz#readme",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=12"
   },
   "dependencies": {
-    "axios": "^1.7.0"
+    "node-fetch": "^2.6.9"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
-    "jest": "^29.7.0",
-    "axios-mock-adapter": "^1.22.0"
+    "jest": "^29.6.1",
+    "eslint": "^8.50.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "nock": "^13.3.0",
+    "nodemon": "^2.0.22"
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "files": [
     "index.js",
-    "index.d.ts",
-    "README.md",
-    "LICENSE"
-  ],
-  "jest": {
-    "testEnvironment": "node",
-    "coverageThreshold": {
-      "global": {
-        "lines": 80
-      }
-    }
-  }
+    "lib/",
+    "README.md"
+  ]
 }
