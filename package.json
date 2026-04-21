@@ -1,50 +1,49 @@
 {
-  "name": "sms-bulk-tz",
-  "version": "1.0.4",
-  "description": "TAPSA SMS client for sending single and bulk SMS to Tanzanian numbers",
+  "name": "tapsa-bulk-sms",
+  "version": "1.0.0",
+  "description": "Official Node.js client library for TAPSA Bulk SMS API - Send SMS messages and check account balance in Tanzania",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "test": "jest --coverage",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "diagnose": "node scripts/diagnose.js",
-    "prepublishOnly": "npm test && npm run lint"
+  "bin": {
+    "tapsa-sms": "./index.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Lazack28/sms-bulk-tz.git"
+  "scripts": {
+    "test": "node test.js",
+    "start": "node index.js"
   },
   "keywords": [
-    "sms",
-    "tanzania",
     "tapsa",
-    "bulk-sms"
+    "sms",
+    "bulk-sms",
+    "tanzania",
+    "sms-api",
+    "messaging",
+    "africa",
+    "sms-gateway",
+    "tapsa-sms",
+    "bulk-messaging"
   ],
-  "author": "Your Name <you@example.com>",
+  "author": {
+    "name": "TAPSA Bulk SMS",
+    "email": "support@smstapsa.site",
+    "url": "https://smstapsa.site"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lazack28/sms-bulk-tz"
+  },
+  "bugs": {
+    "url": "https://github.com/Lazack28/sms-bulk-tz/issues"
+  },
+  "homepage": "https://smstapsa.site",
   "engines": {
-    "node": ">=12"
+    "node": ">=12.0.0"
   },
-  "dependencies": {
-    "node-fetch": "^2.6.9"
-  },
-  "devDependencies": {
-    "jest": "^29.6.1",
-    "eslint": "^8.50.0",
-    "eslint-config-standard": "^17.0.0",
-    "eslint-plugin-import": "^2.30.0",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^6.1.1",
-    "nock": "^13.3.0",
-    "nodemon": "^2.0.22"
-  },
-  "jest": {
-    "testEnvironment": "node"
-  },
+  "dependencies": {},
+  "devDependencies": {},
   "files": [
     "index.js",
-    "lib/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ]
 }
