@@ -1,450 +1,247 @@
-"use strict";
-
-const fetch = require("node-fetch");
-
-// ─────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────
-
-const DEFAULT_BASE_URL       = "https://api.smstapsa.site/v1";
-const DEFAULT_SENDER_ID      = "TAPSA";
-const DEFAULT_TIMEOUT_MS     = 15_000;
-const DEFAULT_RETRY_ATTEMPTS = 3;
-const DEFAULT_RETRY_DELAY_MS = 500;
-const MAX_MESSAGE_LENGTH     = 160;
-const PHONE_REGEX            = /^255\d{9}$/; // Tanzania: 255XXXXXXXXX
-
-// ─────────────────────────────────────────────
-// Custom Error Class
-// ─────────────────────────────────────────────
-
-class SMSError extends Error {
-  constructor(message, code, status = null, raw = null) {
-    super(message);
-    this.name   = "SMSError";
-    this.code   = code;
-    this.status = status;
-    this.raw    = raw;
-  }
-}
-
-// ─────────────────────────────────────────────
-// Internal Helpers
-// ─────────────────────────────────────────────
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function validatePhone(phone) {
-  if (typeof phone !== "string") {
-    return { valid: false, reason: `Expected string, got ${typeof phone}` };
-  }
-  const t = phone.trim();
-  if (!PHONE_REGEX.test(t)) {
-    return {
-      valid: false,
-      reason: `"${t}" must match format 255XXXXXXXXX (e.g. 255712345678)`,
-    };
-  }
-  return { valid: true };
-}
-
-function normaliseRecipients(value) {
-  if (!value) {
-    throw new SMSError(
-      "Recipient(s) required — pass a string or array to `to`",
-      "INVALID_RECIPIENTS"
-    );
-  }
-
-  const list = (Array.isArray(value) ? value : [value]).map((p) =>
-    typeof p === "string" ? p.trim() : p
-  );
-
-  if (list.length === 0) {
-    throw new SMSError("At least one recipient is required", "INVALID_RECIPIENTS");
-  }
-
-  const invalid = list
-    .map((p) => ({ p, ...validatePhone(p) }))
-    .filter((r) => !r.valid);
-
-  if (invalid.length > 0) {
-    const detail = invalid.map((r) => `  • ${r.reason}`).join("\n");
-    throw new SMSError(`Invalid phone number(s):\n${detail}`, "INVALID_PHONE_NUMBER");
-  }
-
-  return list;
-}
-
-function validateMessage(message) {
-  if (typeof message !== "string" || message.trim().length === 0) {
-    throw new SMSError("Message must be a non-empty string", "INVALID_MESSAGE");
-  }
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    throw new SMSError(
-      `Message exceeds ${MAX_MESSAGE_LENGTH} characters (got ${message.length})`,
-      "MESSAGE_TOO_LONG"
-    );
-  }
-}
-
-function makeTimeoutSignal(ms) {
-  if (typeof AbortController === "undefined") {
-    return { signal: null, clear: () => {} };
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  return {
-    signal: controller.signal,
-    clear:  () => clearTimeout(timer),
-  };
-}
 
 /**
- * Parse an API response into a plain object.
- * Handles non-JSON and malformed JSON responses gracefully.
+ * TAPSA Bulk SMS API Client
+ * 
+ * A Node.js client for the TAPSA Bulk SMS API.
+ * 
+ * @example
+ * const TapsaSMS = require('tapsa-sms');
+ * const sms = new TapsaSMS('your-api-key');
+ * 
+ * // Check balance
+ * const balance = await sms.getBalance();
+ * 
+ * // Send SMS
+ * const result = await sms.sendSMS(['255712345678'], 'Hello world!', 'TAPSA');
  */
-async function parseResponse(res) {
-  const contentType = res.headers.get("content-type") || "";
-  const text = await res.text().catch(() => "");
 
-  if (!contentType.includes("application/json")) {
-    // Non-JSON body (HTML error page, plain text, etc.)
-    throw new SMSError(
-      `API returned non-JSON response (HTTP ${res.status}): ${text.slice(0, 200)}`,
-      res.ok ? "UNEXPECTED_RESPONSE" : httpCodeToSMSCode(res.status),
-      res.status,
-      text
-    );
-  }
+const https = require('https');
+const http = require('http');
 
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    // Malformed JSON
-    throw new SMSError(
-      `Failed to parse JSON response (HTTP ${res.status})`,
-      "INVALID_JSON_RESPONSE",
-      res.status,
-      text
-    );
+class TapsaSMSError extends Error {
+  constructor(message, statusCode, responseData = null) {
+    super(message);
+    this.name = 'TapsaSMSError';
+    this.statusCode = statusCode;
+    this.responseData = responseData;
   }
 }
 
-function httpCodeToSMSCode(status) {
-  return (
-    {
-      400: "BAD_REQUEST",
-      401: "UNAUTHORIZED",
-      402: "INSUFFICIENT_BALANCE",
-      403: "FORBIDDEN",
-      404: "NOT_FOUND",
-      429: "RATE_LIMITED",
-      500: "SERVER_ERROR",
-      502: "SERVER_ERROR",
-      503: "SERVER_UNAVAILABLE",
-    }[status] || "API_ERROR"
-  );
-}
-
-// ─────────────────────────────────────────────
-// Main Class
-// ─────────────────────────────────────────────
-
-class SMSBulkTZ {
-  constructor({
-    apiKey,
-    senderId,
-    baseURL,
-    timeout,
-    retryAttempts,
-    retryDelay,
-    debug,
-  } = {}) {
-    if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") {
-      throw new SMSError(
-        "A valid API key is required. Get one at https://smstapsa.site/api-keys.html",
-        "MISSING_API_KEY"
-      );
+class TapsaSMS {
+  /**
+   * Create a new TAPSA SMS API client
+   * @param {string} apiKey - Your TAPSA API key from the API Keys page
+   * @param {Object} options - Configuration options
+   * @param {string} options.baseURL - API base URL (default: https://api.smstapsa.site/v1)
+   * @param {number} options.timeout - Request timeout in milliseconds (default: 30000)
+   */
+  constructor(apiKey, options = {}) {
+    if (!apiKey || typeof apiKey !== 'string') {
+      throw new TapsaSMSError('API key is required', 400);
     }
-
-    this.apiKey        = apiKey.trim();
-    this.senderId      = (senderId || DEFAULT_SENDER_ID).trim();
-    this.baseURL       = (baseURL  || DEFAULT_BASE_URL).replace(/\/$/, "");
-    this.timeout       = typeof timeout       === "number" && timeout       > 0  ? timeout       : DEFAULT_TIMEOUT_MS;
-    this.retryAttempts = typeof retryAttempts === "number" && retryAttempts >= 0 ? retryAttempts : DEFAULT_RETRY_ATTEMPTS;
-    this.retryDelay    = typeof retryDelay    === "number" && retryDelay    >= 0 ? retryDelay    : DEFAULT_RETRY_DELAY_MS;
-    this.debug         = Boolean(debug);
-  }
-
-  _log(...args) {
-    if (this.debug) console.debug("[sms-bulk-tz]", ...args);
+    this.apiKey = apiKey;
+    this.baseURL = options.baseURL || 'https://api.smstapsa.site/v1';
+    this.timeout = options.timeout || 30000;
   }
 
   /**
-   * Make a fetch request with timeout + retry + exponential back-off.
-   * Retries on network errors, 5xx, and 429 (rate-limited).
-   * Never retries on other 4xx.
+   * Make an HTTP request to the API
+   * @private
    */
-  async _fetch(path, options = {}) {
-    const url   = `${this.baseURL}${path}`;
-    let lastErr;
-    let delay = this.retryDelay;
+  _request(method, endpoint, data = null) {
+    return new Promise((resolve, reject) => {
+      const url = new URL(`${this.baseURL}${endpoint}`);
+      const options = {
+        method: method,
+        headers: {
+          'X-API-Key': this.apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        timeout: this.timeout,
+      };
 
-    for (let attempt = 1; attempt <= this.retryAttempts + 1; attempt++) {
-      const { signal, clear } = makeTimeoutSignal(this.timeout);
-
-      try {
-        this._log(`Attempt ${attempt} — ${options.method || "GET"} ${url}`);
-
-        const res = await fetch(url, {
-          ...options,
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": this.apiKey,
-            ...(options.headers || {}),
-          },
-          ...(signal ? { signal } : {}),
+      const protocol = url.protocol === 'https:' ? https : http;
+      const req = protocol.request(url, options, (res) => {
+        let responseData = '';
+        res.on('data', (chunk) => {
+          responseData += chunk;
         });
+        res.on('end', () => {
+          let parsedData;
+          try {
+            parsedData = responseData ? JSON.parse(responseData) : {};
+          } catch (e) {
+            reject(new TapsaSMSError('Invalid JSON response from server', res.statusCode, responseData));
+            return;
+          }
 
-        clear();
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(parsedData);
+          } else {
+            const errorMessage = parsedData.error || parsedData.message || `HTTP ${res.statusCode}`;
+            reject(new TapsaSMSError(errorMessage, res.statusCode, parsedData));
+          }
+        });
+      });
 
-        // Handle rate limiting (429) specially: server may suggest Retry-After
-        if (res.status === 429) {
-          const retryAfter = res.headers.get("Retry-After");
-          const serverBody = await res.text().catch(() => "");
-          const suggestedDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 : delay;
-          this._log(`Rate limited (HTTP 429). Server suggests retry after ${suggestedDelay}ms.`);
-          lastErr = new SMSError(
-            `Rate limited by server (HTTP 429)`,
-            "RATE_LIMITED",
-            429,
-            serverBody
-          );
+      req.on('error', (err) => {
+        reject(new TapsaSMSError(`Request failed: ${err.message}`, 500));
+      });
 
-          const isLastAttempt = attempt > this.retryAttempts;
-          if (isLastAttempt) break;
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new TapsaSMSError('Request timeout', 408));
+      });
 
-          await sleep(suggestedDelay);
-          delay = Math.min(delay * 2, 10_000);
-          continue; // retry loop
-        }
-
-        // 4xx (other than 429) — don't retry, surface immediately
-        if (res.status >= 400 && res.status < 500) {
-          const body = await parseResponse(res).catch((e) => ({ error: e.message }));
-          const msg  = body?.error || body?.message || `HTTP ${res.status}`;
-          throw new SMSError(msg, httpCodeToSMSCode(res.status), res.status, body);
-        }
-
-        // 5xx — allow retry below
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new SMSError(
-            `Server error HTTP ${res.status}`,
-            "SERVER_ERROR",
-            res.status,
-            text
-          );
-        }
-
-        return res;
-      } catch (err) {
-        clear();
-        lastErr = err;
-
-        // Never retry SMSErrors from 4xx
-        if (err instanceof SMSError && err.status && err.status < 500 && err.status !== 429) break;
-
-        // Timeout — include URL for context
-        if (err.name === "AbortError") {
-          lastErr = new SMSError(
-            `Request to ${url} timed out after ${this.timeout}ms`,
-            "REQUEST_TIMEOUT"
-          );
-          break; // timeout is not a transient retry-able error
-        }
-
-        const isLastAttempt = attempt > this.retryAttempts;
-        if (isLastAttempt) break;
-
-        this._log(`Retrying in ${delay}ms… (${err.message})`);
-        await sleep(delay);
-        delay = Math.min(delay * 2, 10_000);
+      if (data) {
+        req.write(JSON.stringify(data));
       }
-    }
-
-    // Wrap raw fetch/network errors into SMSError
-    if (!(lastErr instanceof SMSError)) {
-      const code =
-        lastErr?.code === "ENOTFOUND"    ? "NETWORK_ERROR" :
-        lastErr?.code === "ECONNREFUSED" ? "NETWORK_ERROR" :
-        lastErr?.code === "EAI_AGAIN"    ? "NETWORK_ERROR" :
-        "NETWORK_ERROR";
-
-      lastErr = new SMSError(
-        `Network error: ${lastErr?.message || "unknown"} — check your internet connection.`,
-        code
-      );
-    }
-
-    throw lastErr;
+      req.end();
+    });
   }
 
-  // ─── Public API ───────────────────────────────
+  /**
+   * Get account balance
+   * @returns {Promise<Object>} Balance information
+   * @returns {boolean} success - Whether the request succeeded
+   * @returns {number} balance - Current SMS balance
+   * @returns {string} currency - Currency code (e.g., TZS)
+   * @returns {number} smsRate - Cost per SMS in currency units
+   * 
+   * @example
+   * const balance = await sms.getBalance();
+   * console.log(`Balance: ${balance.balance} SMS`);
+   */
+  async getBalance() {
+    return this._request('GET', '/account/balance');
+  }
 
-  async send({ to, message, senderId } = {}) {
-    const phoneNumbers = normaliseRecipients(to);
-    validateMessage(message);
+  /**
+   * Send SMS messages to one or multiple recipients
+   * @param {string|string[]} phoneNumbers - Recipient phone number(s) in 255XXXXXXXXX format
+   * @param {string} message - SMS message content (max 160 characters)
+   * @param {string} senderId - Sender ID (default: "TAPSA", max 11 characters)
+   * @returns {Promise<Object>} Send result
+   * @returns {boolean} success - Whether the request succeeded
+   * @returns {string} message - Status message
+   * @returns {string} senderId - The sender ID used
+   * @returns {Array} recipients - List of recipients
+   * @returns {number} deducted - Number of SMS credits deducted
+   * @returns {number} remainingBalance - Remaining balance after sending
+   * 
+   * @example
+   * // Send to single recipient
+   * const result = await sms.sendSMS('255712345678', 'Hello world!', 'TAPSA');
+   * 
+   * // Send to multiple recipients
+   * const result = await sms.sendSMS(['255712345678', '255765432100'], 'Hello everyone!');
+   */
+  async sendSMS(phoneNumbers, message, senderId = 'TAPSA') {
+    if (!phoneNumbers) {
+      throw new TapsaSMSError('phoneNumbers is required', 400);
+    }
+    if (!message || typeof message !== 'string') {
+      throw new TapsaSMSError('message is required and must be a string', 400);
+    }
+    if (message.length > 160) {
+      throw new TapsaSMSError('Message exceeds 160 character limit', 400);
+    }
+    if (senderId && senderId.length > 11) {
+      throw new TapsaSMSError('senderId cannot exceed 11 characters', 400);
+    }
+
+    // Normalize phoneNumbers to array
+    const normalizedPhoneNumbers = Array.isArray(phoneNumbers) ? phoneNumbers : [phoneNumbers];
+    
+    // Validate phone numbers format (basic check for 255 prefix and digits)
+    for (const phone of normalizedPhoneNumbers) {
+      if (!phone || !phone.match(/^255[0-9]{9}$/)) {
+        throw new TapsaSMSError(`Invalid phone number format: ${phone}. Must be 255XXXXXXXXX (12 digits starting with 255)`, 400);
+      }
+    }
 
     const payload = {
-      phoneNumbers,
-      message,
-      senderId: (senderId || this.senderId).trim(),
+      phoneNumbers: normalizedPhoneNumbers,
+      message: message,
+      senderId: senderId,
     };
 
-    // redact message content consistently
-    this._log("Sending SMS →", { ...payload, message: "[REDACTED]" });
-
-    const res  = await this._fetch("/sms/send", {
-      method: "POST",
-      body:   JSON.stringify(payload),
-    });
-    const data = await parseResponse(res);
-
-    this._log("Response ←", data);
-    return data;
+    return this._request('POST', '/sms/send', payload);
   }
 
   /**
-   * Send an SMS to a large recipient list, split into parallel batches.
-   * One batch failing does NOT abort the others.
+   * Check if the API key is valid and account has balance
+   * @returns {Promise<boolean>} True if account is valid
    */
-  async sendBulk({ recipients, message, senderId, batchSize = 100 } = {}) {
-    if (!Array.isArray(recipients) || recipients.length === 0) {
-      throw new SMSError(
-        "'recipients' must be a non-empty array",
-        "INVALID_RECIPIENTS"
-      );
+  async validateAccount() {
+    try {
+      const balance = await this.getBalance();
+      return balance.success === true;
+    } catch (error) {
+      return false;
     }
-    validateMessage(message);
-
-    const size    = typeof batchSize === "number" && batchSize > 0 ? batchSize : 100;
-    const batches = [];
-    for (let i = 0; i < recipients.length; i += size) {
-      batches.push(recipients.slice(i, i + size));
-    }
-
-    // redact recipients and message in logs
-    this._log("Sending Bulk SMS →", { recipients: "[REDACTED]", message: "[REDACTED]", batches: batches.length });
-
-    const successful = [];
-    const failed     = [];
-
-    await Promise.all(
-      batches.map(async (batch) => {
-        try {
-          const result = await this.send({ to: batch, message, senderId });
-          successful.push(result);
-        } catch (err) {
-          // include batch info in the error for easier debugging
-          const batchInfo = Array.isArray(batch) ? batch.join(", ") : String(batch);
-          const errMsg = `${err.message}${batchInfo ? ` (batch ${batchInfo})` : ""}`;
-          this._log("Batch failed:", errMsg);
-          failed.push({
-            batch,
-            error: errMsg,
-            code:  err.code || "UNKNOWN_ERROR",
-          });
-        }
-      })
-    );
-
-    return {
-      totalRecipients: recipients.length,
-      successful,
-      failed,
-      summary: {
-        sent:            successful.reduce((n, r) => n + (r.deducted   ?? 0), 0),
-        failed:          failed.reduce(    (n, f) => n + f.batch.length,      0),
-        successfulCount: successful.length,
-        failedCount:     failed.length,
-      },
-    };
   }
 
-  async getBalance() {
-    this._log("GET /account/balance");
-
-    const res  = await this._fetch("/account/balance");
-    const data = await parseResponse(res);
-
-    this._log("Response ←", data);
-    return data;
-  }
-
-  async diagnose() {
-    const candidates = [
-      this.baseURL,
-      "https://api.smstapsa.site/v1",
-      "https://smstapsa.site/v1",
-      "https://smstapsa.site/api/v1",
-    ].filter((u, i, arr) => arr.indexOf(u) === i); // dedupe
-
-    console.log("[sms-bulk-tz] Running connectivity diagnosis…\n");
-
-    const results = await Promise.all(
-      candidates.map(async (baseURL) => {
-        const url = `${baseURL}/account/balance`;
-        const { signal, clear } = makeTimeoutSignal(8_000);
-        try {
-          const res = await fetch(url, {
-            headers: { "X-API-Key": this.apiKey },
-            ...(signal ? { signal } : {}),
-          });
-          clear();
-          const reachable = res.ok || res.status === 401;
-          console.log(`  ${reachable ? "✅" : "⚠️ "}  ${baseURL}  →  HTTP ${res.status}`);
-          return { url: baseURL, reachable, status: res.status };
-        } catch (err) {
-          clear();
-          const reason = err.name === "AbortError" ? "timeout" : (err.code || err.message);
-          console.log(`  ❌  ${baseURL}  →  ${reason}`);
-          return { url: baseURL, reachable: false, error: reason };
-        }
-      })
-    );
-
-    const working = results.find((r) => r.reachable);
-
-    console.log("");
-    if (working) {
-      console.log(`[sms-bulk-tz] ✅ Working URL: ${working.url}`);
-      if (working.url !== this.baseURL) {
-        console.log(
-          `  → Pass this to your constructor:\n` +
-          `    new SMSBulkTZ({ baseURL: "${working.url}", ... })\n` +
-          `  → Or set SMS_BASE_URL="${working.url}" in your .env`
-        );
-      }
-    } else {
-      console.log("[sms-bulk-tz] ❌ No URL responded. Check your internet connection and API key.");
-    }
-    console.log("");
-
-    return {
-      configured: this.baseURL,
-      reachable:  Boolean(working),
-      workingURL: working?.url ?? null,
-      results,
-    };
+  /**
+   * Get remaining balance without other details
+   * @returns {Promise<number>} Remaining SMS count
+   */
+  async getRemainingBalance() {
+    const balance = await this.getBalance();
+    return balance.balance || 0;
   }
 }
 
-// ─────────────────────────────────────────────
-// Exports
-// ─────────────────────────────────────────────
+// CLI support for direct usage
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const command = args[0];
+  const apiKey = process.env.TAPSA_API_KEY || args[1];
 
-module.exports           = SMSBulkTZ;
-module.exports.SMSBulkTZ = SMSBulkTZ;
-module.exports.SMSError  = SMSError;
+  if (!apiKey) {
+    console.error('Error: API key is required. Set TAPSA_API_KEY environment variable or provide as argument.');
+    console.error('Usage:');
+    console.error('  Check balance: node index.js balance YOUR_API_KEY');
+    console.error('  Send SMS:      node index.js send YOUR_API_KEY "255712345678" "Hello world" [SENDER_ID]');
+    process.exit(1);
+  }
+
+  const sms = new TapsaSMS(apiKey);
+
+  async function cli() {
+    try {
+      if (command === 'balance') {
+        const result = await sms.getBalance();
+        console.log(JSON.stringify(result, null, 2));
+      } else if (command === 'send') {
+        const phoneNumbers = args[2];
+        const message = args[3];
+        const senderId = args[4] || 'TAPSA';
+        
+        if (!phoneNumbers || !message) {
+          console.error('Error: phoneNumbers and message are required');
+          console.error('Usage: node index.js send API_KEY "255712345678,255765432100" "Hello world" [SENDER_ID]');
+          process.exit(1);
+        }
+        
+        const phones = phoneNumbers.split(',');
+        const result = await sms.sendSMS(phones, message, senderId);
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.error('Unknown command. Use: balance or send');
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error('Error:', error.message);
+      if (error.responseData) {
+        console.error('Details:', error.responseData);
+      }
+      process.exit(1);
+    }
+  }
+
+  cli();
+}
+
+module.exports = TapsaSMS;
