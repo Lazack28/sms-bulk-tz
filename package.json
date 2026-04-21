@@ -1,6 +1,6 @@
 {
   "name": "sms-bulk-tz",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "TAPSA SMS client for sending single and bulk SMS to Tanzanian numbers",
   "main": "index.js",
   "scripts": {
