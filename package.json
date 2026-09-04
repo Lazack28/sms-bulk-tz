@@ -3,12 +3,17 @@
   "version": "2.0.0",
   "description": "Combined TAPSA Bulk SMS web application (frontend + backend)",
   "main": "backend/index.js",
+  "workspaces": [
+    "packages/tapsa-sms"
+  ],
   "scripts": {
     "install:all": "npm install && cd backend && npm install",
     "start": "cd backend && npm start",
     "dev": "cd backend && npm run dev",
     "build": "echo 'No build step required for plain HTML/CSS/JS frontend'",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "npm run sdk:test",
+    "sdk:build": "npm --workspace tapsa-sms run build",
+    "sdk:test": "npm --workspace tapsa-sms test"
   },
   "keywords": [
     "sms",
