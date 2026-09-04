@@ -1,5 +1,5 @@
 # Changelog
 
-## 1.0.0
+## 1.0.3
 
-- Initial release of the official SMSTAPSA Node.js and TypeScript SDK.
+- Current release of the official SMSTAPSA Node.js and TypeScript SDK.

@@ -1,6 +1,6 @@
 {
-  "name": "tapsa-sms",
-  "version": "1.0.0",
+  "name": "sms-bulk-tz",
+  "version": "1.0.4",
   "description": "Official Node.js SDK for the SMSTAPSA SMS API",
   "keywords": ["tapsa", "smstapsa", "sms", "bulk-sms", "tanzania", "typescript"],
   "author": "Lazaro Mtaju",

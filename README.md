@@ -1,11 +1,11 @@
-# tapsa-sms
+# sms-bulk-tz
 
 Official Node.js SDK for the [SMSTAPSA SMS API](https://smstapsa.site/). Send SMS messages and check account balances from Node.js applications with a small, typed client.
 
 ## Installation
 
 ```bash
-npm install tapsa-sms
+npm install sms-bulk-tz
 ```
 
 Node.js 18 or newer is required.
@@ -21,7 +21,7 @@ TAPSA_API_KEY=your_api_key
 ## Quick Start
 
 ```ts
-import { TapsaSMS } from 'tapsa-sms';
+import { TapsaSMS } from 'sms-bulk-tz';
 
 const tapsa = new TapsaSMS({
   apiKey: process.env.TAPSA_API_KEY!
@@ -72,7 +72,7 @@ console.log(balance.data.balance, balance.data.currency);
 API and validation failures throw `TapsaAPIError`. It exposes `message`, `status`, `code`, `response`, and `data` so the original API details remain available.
 
 ```ts
-import { TapsaAPIError } from 'tapsa-sms';
+import { TapsaAPIError } from 'sms-bulk-tz';
 
 try {
   await tapsa.sendSMS({ phoneNumbers: ['255712345678'], message: 'Hello' });
