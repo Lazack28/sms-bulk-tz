@@ -1,5 +1,5 @@
 {
-  "name": "tapsa-bulk-sms",
+  "name": "tapsa-bulk-tz",
   "version": "1.0.4",
   "description": "Official Node.js SDK for the SMSTAPSA SMS API",
   "type": "module",
