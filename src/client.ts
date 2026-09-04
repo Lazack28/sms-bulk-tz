@@ -70,7 +70,7 @@ export class TapsaSMS {
       try {
         data = text ? JSON.parse(text) : {};
       } catch {
-        throw new TapsaAPIError('TAPSA API returned malformed JSON', {
+        throw new TapsaAPIError('SMSTAPSA API returned malformed JSON', {
           status: response.status,
           code: 'MALFORMED_RESPONSE',
           response,
@@ -79,7 +79,7 @@ export class TapsaSMS {
       }
       if (!response.ok) {
         const body = data as { message?: unknown; error?: unknown; code?: unknown };
-        const message = typeof body.message === 'string' ? body.message : typeof body.error === 'string' ? body.error : `TAPSA API request failed with status ${response.status}`;
+        const message = typeof body.message === 'string' ? body.message : typeof body.error === 'string' ? body.error : `SMSTAPSA API request failed with status ${response.status}`;
         throw new TapsaAPIError(message, {
           status: response.status,
           code: typeof body.code === 'string' ? body.code : `HTTP_${response.status}`,
@@ -90,8 +90,10 @@ export class TapsaSMS {
       return data as T;
     } catch (error) {
       if (error instanceof TapsaAPIError) throw error;
-      const message = error instanceof Error && error.name === 'AbortError' ? 'TAPSA API request timed out' : error instanceof Error ? error.message : 'TAPSA API request failed';
-      throw new TapsaAPIError(message, { code: error instanceof Error && error.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK_ERROR' });
+      const isTimeout = error instanceof Error && error.name === 'AbortError';
+      throw new TapsaAPIError(isTimeout ? 'SMSTAPSA API request timed out' : error instanceof Error ? error.message : 'SMSTAPSA API request failed', {
+        code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR'
+      });
     } finally {
       clearTimeout(timeoutId);
     }

@@ -1,196 +1,130 @@
-# TAPSA Bulk SMS - Combined Web Application
+# tapsa-sms
 
-A full-stack web application that combines a Node.js/Express backend with an HTML/CSS/JS frontend into a single deployable unit.
+Official Node.js SDK for the [SMSTAPSA SMS API](https://smstapsa.site/). Send SMS messages and check account balances from Node.js applications with a small, typed client.
 
-## Recommended Folder Structure
+## Installation
 
-```
-tapsa-combined/
-├── backend/                  # Express API server
-│   ├── index.js              # Main server file (API routes + static file serving)
-│   ├── firebase.js           # Firebase Admin SDK initialization
-│   ├── lib/
-│   │   └── sms-bulk-tz.js    # TAPSA SMS client library
-│   ├── package.json          # Backend dependencies
-│   ├── .env                  # Environment variables (not in git)
-│   └── serviceAccount.json   # Firebase service account (not in git)
-├── frontend/                 # Static frontend files
-│   ├── index.html            # Single Page Application entry
-│   ├── css/
-│   │   └── style.css         # Styles
-│   └── js/
-│       └── app.js            # Frontend application logic
-├── package.json              # Root project config + convenience scripts
-├── .env.example              # Template for required env variables
-├── .gitignore                # Excludes node_modules, .env, serviceAccount.json
-└── README.md                 # This file
+```bash
+npm install tapsa-sms
 ```
 
-## How the Frontend is Served from the Backend
+Node.js 18 or newer is required.
 
-The backend uses Express static middleware to serve the `frontend/` folder:
+## Authentication
 
-```js
-// backend/index.js
-const path = require('path');
+Create an API key in your SMSTAPSA account and provide it through an environment variable. Never commit the key to source control.
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, '../frontend')));
+```bash
+TAPSA_API_KEY=your_api_key
+```
 
-// Health check endpoint
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+## Quick Start
 
-// Catch-all: return index.html for any non-API route (SPA routing)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
+```ts
+import { TapsaSMS } from 'tapsa-sms';
+
+const tapsa = new TapsaSMS({
+  apiKey: process.env.TAPSA_API_KEY!
+});
+
+const result = await tapsa.sendSMS({
+  phoneNumbers: ['255712345678'],
+  message: 'Hello from SMSTAPSA',
+  senderId: 'TAPSA'
+});
+
+console.log(result);
+```
+
+## Send SMS
+
+Send to one recipient:
+
+```ts
+await tapsa.sendSMS({
+  phoneNumbers: ['255712345678'],
+  message: 'Your appointment is confirmed.',
+  senderId: 'TAPSA'
 });
 ```
 
-All API routes (e.g. `/me`, `/send`, `/contacts`) are defined **before** the catch-all `*` route. This ensures API calls are handled by the backend, while everything else loads the frontend SPA.
+Send to multiple recipients:
 
-## Configuration Files
+```ts
+await tapsa.sendSMS({
+  phoneNumbers: ['255712345678', '255713456789', '255714567890'],
+  message: 'Hello everyone',
+  senderId: 'TAPSA'
+});
+```
 
-### Root `package.json`
+Phone numbers must be provided as a non-empty array of non-empty strings. The SDK does not impose a country-specific format restriction.
 
-```json
-{
-  "name": "tapsa-combined",
-  "version": "2.0.0",
-  "scripts": {
-    "install:all": "npm install && cd backend && npm install",
-    "start": "cd backend && npm start",
-    "dev": "cd backend && npm run dev"
+## Check Balance
+
+```ts
+const balance = await tapsa.getBalance();
+console.log(balance.data.balance, balance.data.currency);
+```
+
+## Error Handling
+
+API and validation failures throw `TapsaAPIError`. It exposes `message`, `status`, `code`, `response`, and `data` so the original API details remain available.
+
+```ts
+import { TapsaAPIError } from 'tapsa-sms';
+
+try {
+  await tapsa.sendSMS({ phoneNumbers: ['255712345678'], message: 'Hello' });
+} catch (error) {
+  if (error instanceof TapsaAPIError) {
+    console.error(error.status, error.code, error.message, error.data);
   }
 }
 ```
 
-### Backend `package.json`
+HTTP statuses 400, 401, 402, 403, 429, and 500 are preserved. Network failures, timeouts, and malformed JSON responses receive explicit error codes.
 
-Key dependencies:
-- `express` — web server
-- `cors`, `body-parser` — middleware
-- `firebase-admin` — authentication & database
-- `axios`, `xml2js` — Africa's Talking SMS integration
-- `dotenv` — environment variables
-- `multer`, `csv-parser`, `vcard-parser` — file uploads
+## Configuration
 
-### `.env` (create from `.env.example`)
-
-| Variable | Description |
-|----------|-------------|
-| `AT_USERNAME` | Africa's Talking username |
-| `AT_API_KEY` | Africa's Talking API key |
-| `ZENOPAY_API_KEY` | Zenopay payment gateway key |
-| `WEBHOOK_URL` | Public URL for payment webhooks |
-
-### Firebase Setup
-
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
-2. Download the **Service Account** JSON and save it as `backend/serviceAccount.json`.
-3. In Firebase Console > Project Settings, copy the **Web API credentials**.
-4. Paste them into `frontend/js/app.js` at the top (`firebaseConfig` object).
-5. Enable **Email/Password** authentication in Firebase Auth.
-
-## Running in Development
-
-```bash
-# 1. Install dependencies
-npm run install:all
-
-# 2. Configure environment
-cp .env.example backend/.env
-# Edit backend/.env with your real keys
-
-# 3. Place Firebase service account
-# Copy your serviceAccount.json into backend/
-
-# 4. Set Firebase client config
-# Edit frontend/js/app.js and replace firebaseConfig placeholders
-
-# 5. Start the dev server
-npm run dev
+```ts
+const tapsa = new TapsaSMS({
+  apiKey: process.env.TAPSA_API_KEY!,
+  baseUrl: 'https://api.smstapsa.site',
+  timeout: 30_000
+});
 ```
 
-The app runs on `http://localhost:5000` (or `PORT` from `.env`).
+`baseUrl` defaults to `https://api.smstapsa.site` and is useful for test servers. `timeout` defaults to 30 seconds.
 
-- Frontend: `http://localhost:5000/`
-- API: `http://localhost:5000/me`, `/send`, etc.
+## API Reference
 
-## Running in Production
+- `new TapsaSMS({ apiKey, baseUrl?, timeout? })`
+- `sendSMS({ phoneNumbers, message, senderId? })`, which calls `POST /v1/sms/send`
+- `getBalance()`, which calls `GET /v1/account/balance`
+
+All request and response interfaces are exported for TypeScript users, including `TapsaSMSOptions`, `SendSMSOptions`, `SendSMSResponse`, and `BalanceResponse`.
+
+## Examples
+
+Runnable source examples are in [`examples/send-sms.ts`](examples/send-sms.ts) and [`examples/balance.ts`](examples/balance.ts).
+
+## Development
 
 ```bash
-# Install only production dependencies
-cd backend && npm install --production
-
-# Start the server
-npm start
+npm install
+npm run typecheck
+npm test
+npm run build
+npm pack --dry-run
 ```
 
-For production, make sure:
-- `NODE_ENV=production` is set (optional, for future middleware tuning)
-- `.env` is populated with live credentials
-- `backend/serviceAccount.json` is present
-- The `frontend/` folder exists next to `backend/`
+The published package contains only `dist`, this README, the license, and the changelog.
 
-## Deployment
+## Documentation
 
-### Heroku
+Read the official [SMSTAPSA documentation](https://smstapsa.site/).
 
-1. Create a `Procfile` in the project root:
-   ```
-   web: cd backend && node index.js
-   ```
-2. Set buildpack: `heroku/nodejs`.
-3. Push the repository.
-4. Add config vars in Heroku Dashboard (Settings > Config Vars) for all `.env` values.
-5. Upload `serviceAccount.json` via Heroku CLI or use a base64-encoded string config var.
+## License
 
-### Render / Railway / Fly.io
-
-These platforms support Node.js apps directly:
-1. Set the **start command** to `cd backend && node index.js`.
-2. Upload environment variables via the platform dashboard.
-3. Ensure the `frontend/` folder is included in the deployment.
-
-### Vercel
-
-Vercel is optimized for serverless. For a traditional Express app:
-1. Add `vercel.json` to the root:
-   ```json
-   {
-     "version": 2,
-     "builds": [
-       { "src": "backend/index.js", "use": "@vercel/node" }
-     ],
-     "routes": [
-       { "src": "/(.*)", "dest": "backend/index.js" }
-     ]
-   }
-   ```
-2. Move or copy `frontend/` into `backend/` (or adjust `express.static` path) because Vercel only deploys files referenced by the entry point's directory.
-3. Set environment variables in the Vercel dashboard.
-
-### Netlify
-
-Netlify also prefers serverless. Use the **Netlify Functions** adapter:
-1. Install `netlify-cli` and `serverless-http`.
-2. Create `netlify/functions/api.js`:
-   ```js
-   const serverless = require('serverless-http');
-   const app = require('../../backend/index.js');
-   module.exports.handler = serverless(app);
-   ```
-3. Add `_redirects`:
-   ```
-   /*    /index.html   200
-   ```
-4. For simpler deployment, consider using **Netlify Drop** for the frontend and keep the backend on Heroku/Render.
-
-## Security Checklist
-
-- [ ] `.env` is in `.gitignore`
-- [ ] `serviceAccount.json` is in `.gitignore`
-- [ ] Firebase client config uses restricted API keys (no admin privileges)
-- [ ] API routes require valid Firebase ID tokens (`authenticateToken`)
-- [ ] CORS is configured for your production domain only (instead of `*`)
-- [ ] Rate limiting is enabled for public API endpoints
+MIT

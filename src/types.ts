@@ -31,5 +31,3 @@ export interface BalanceResponse {
   success: boolean;
   data: BalanceData;
 }
-
-export type TapsaAPIResponse = SendSMSResponse | BalanceResponse | Record<string, unknown>;

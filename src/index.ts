@@ -6,6 +6,6 @@ export type {
   SendSMSData,
   SendSMSOptions,
   SendSMSResponse,
-  TapsaAPIResponse,
   TapsaSMSOptions
 } from './types.js';
+export type { TapsaAPIErrorOptions } from './errors.js';
