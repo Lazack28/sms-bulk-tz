@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TapsaAPIError } from '../src/errors.js';
 
 describe('TapsaAPIError', () => {
-  it('is an Error with structured API details', () => {
+  it('is an Error with structured details', () => {
     const error = new TapsaAPIError('Unauthorized', { status: 401, code: 'AUTH_FAILED', data: { reason: 'invalid key' } });
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('TapsaAPIError');

@@ -1,5 +1,5 @@
 # Changelog
 
-## 1.0.3
+## 1.0.4
 
-- Current release of the official SMSTAPSA Node.js and TypeScript SDK.
+- Prepared the TypeScript SDK for publishing as `sms-bulk-tz`.

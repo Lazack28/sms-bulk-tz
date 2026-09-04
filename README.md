@@ -1,6 +1,6 @@
 # sms-bulk-tz
 
-Official Node.js SDK for the [SMSTAPSA SMS API](https://smstapsa.site/). Send SMS messages and check account balances from Node.js applications with a small, typed client.
+Official Node.js SDK for the [SMSTAPSA SMS API](https://smstapsa.site/). Send SMS messages and check account balances from Node.js applications with a lightweight, typed client.
 
 ## Installation
 
@@ -12,7 +12,7 @@ Node.js 18 or newer is required.
 
 ## Authentication
 
-Create an API key in your SMSTAPSA account and provide it through an environment variable. Never commit the key to source control.
+Provide your SMSTAPSA API key through an environment variable. Never commit it.
 
 ```bash
 TAPSA_API_KEY=your_api_key
@@ -23,42 +23,26 @@ TAPSA_API_KEY=your_api_key
 ```ts
 import { TapsaSMS } from 'sms-bulk-tz';
 
-const tapsa = new TapsaSMS({
-  apiKey: process.env.TAPSA_API_KEY!
-});
-
+const tapsa = new TapsaSMS({ apiKey: process.env.TAPSA_API_KEY! });
 const result = await tapsa.sendSMS({
   phoneNumbers: ['255712345678'],
   message: 'Hello from SMSTAPSA',
   senderId: 'TAPSA'
 });
-
 console.log(result);
 ```
 
 ## Send SMS
 
-Send to one recipient:
-
 ```ts
 await tapsa.sendSMS({
-  phoneNumbers: ['255712345678'],
-  message: 'Your appointment is confirmed.',
-  senderId: 'TAPSA'
-});
-```
-
-Send to multiple recipients:
-
-```ts
-await tapsa.sendSMS({
-  phoneNumbers: ['255712345678', '255713456789', '255714567890'],
+  phoneNumbers: ['255712345678', '255713456789'],
   message: 'Hello everyone',
   senderId: 'TAPSA'
 });
 ```
 
-Phone numbers must be provided as a non-empty array of non-empty strings. The SDK does not impose a country-specific format restriction.
+`phoneNumbers` must be a non-empty array of non-empty strings. The SDK does not impose an unnecessary country-specific format restriction.
 
 ## Check Balance
 
@@ -69,7 +53,7 @@ console.log(balance.data.balance, balance.data.currency);
 
 ## Error Handling
 
-API and validation failures throw `TapsaAPIError`. It exposes `message`, `status`, `code`, `response`, and `data` so the original API details remain available.
+API and validation failures throw `TapsaAPIError`, exposing `message`, `status`, `code`, `response`, and `data`.
 
 ```ts
 import { TapsaAPIError } from 'sms-bulk-tz';
@@ -77,9 +61,7 @@ import { TapsaAPIError } from 'sms-bulk-tz';
 try {
   await tapsa.sendSMS({ phoneNumbers: ['255712345678'], message: 'Hello' });
 } catch (error) {
-  if (error instanceof TapsaAPIError) {
-    console.error(error.status, error.code, error.message, error.data);
-  }
+  if (error instanceof TapsaAPIError) console.error(error.status, error.code, error.message, error.data);
 }
 ```
 
@@ -87,27 +69,19 @@ HTTP statuses 400, 401, 402, 403, 429, and 500 are preserved. Network failures, 
 
 ## Configuration
 
-```ts
-const tapsa = new TapsaSMS({
-  apiKey: process.env.TAPSA_API_KEY!,
-  baseUrl: 'https://api.smstapsa.site',
-  timeout: 30_000
-});
-```
+`baseUrl` defaults to `https://api.smstapsa.site` and can be overridden for testing. `timeout` defaults to 30 seconds.
 
-`baseUrl` defaults to `https://api.smstapsa.site` and is useful for test servers. `timeout` defaults to 30 seconds.
+```ts
+const tapsa = new TapsaSMS({ apiKey: process.env.TAPSA_API_KEY!, baseUrl: 'https://api.smstapsa.site', timeout: 30_000 });
+```
 
 ## API Reference
 
 - `new TapsaSMS({ apiKey, baseUrl?, timeout? })`
-- `sendSMS({ phoneNumbers, message, senderId? })`, which calls `POST /v1/sms/send`
-- `getBalance()`, which calls `GET /v1/account/balance`
+- `sendSMS({ phoneNumbers, message, senderId? })` calls `POST /v1/sms/send`.
+- `getBalance()` calls `GET /v1/account/balance`.
 
-All request and response interfaces are exported for TypeScript users, including `TapsaSMSOptions`, `SendSMSOptions`, `SendSMSResponse`, and `BalanceResponse`.
-
-## Examples
-
-Runnable source examples are in [`examples/send-sms.ts`](examples/send-sms.ts) and [`examples/balance.ts`](examples/balance.ts).
+All request and response interfaces are exported for TypeScript users. See the examples in [`examples/send-sms.ts`](examples/send-sms.ts) and [`examples/balance.ts`](examples/balance.ts).
 
 ## Development
 
@@ -119,11 +93,9 @@ npm run build
 npm pack --dry-run
 ```
 
-The published package contains only `dist`, this README, the license, and the changelog.
-
 ## Documentation
 
-Read the official [SMSTAPSA documentation](https://smstapsa.site/).
+See the official [SMSTAPSA documentation](https://smstapsa.site/).
 
 ## License
 

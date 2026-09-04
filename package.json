@@ -1,12 +1,8 @@
 {
-  "name": "sms-bulk-tz",
+  "name": "tapsa-bulk-sms",
   "version": "1.0.4",
   "description": "Official Node.js SDK for the SMSTAPSA SMS API",
-  "keywords": ["tapsa", "smstapsa", "sms", "bulk-sms", "tanzania", "typescript"],
-  "author": "Lazaro Mtaju",
-  "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=18.0.0" },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,6 +13,37 @@
       "default": "./dist/index.js"
     }
   },
+  "scripts": {
+    "test": "node test.js",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "tapsa",
+    "sms",
+    "bulk-sms",
+    "tanzania",
+    "sms-api",
+    "messaging",
+    "africa",
+    "sms-gateway",
+    "tapsa-sms",
+    "bulk-messaging"
+  ],
+  "author": {
+    "name": "TAPSA Bulk SMS",
+    "email": "support@smstapsa.site",
+    "url": "https://smstapsa.site"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lazack28/sms-bulk-tz"
+  },
+  "bugs": {
+    "url": "https://github.com/Lazack28/sms-bulk-tz/issues"
+  },
+  "homepage": "https://smstapsa.site",
+  "engines": { "node": ">=18.0.0" },
   "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.build.json",
