@@ -1,7 +1,7 @@
 import { TapsaAPIError } from './errors.js';
 import type { BalanceResponse, SendSMSOptions, SendSMSResponse, TapsaSMSOptions } from './types.js';
 
-const DEFAULT_BASE_URL = 'https://api.smstapsa.site';
+const DEFAULT_BASE_URL = 'https://api.smstapsa.my.id';
 
 export class TapsaSMS {
   private readonly apiKey: string;
