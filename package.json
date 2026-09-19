@@ -1,6 +1,6 @@
 {
   "name": "sms-bulk-tz",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Official Node.js SDK for the SMSTAPSA SMS API",
   "type": "module",
   "main": "dist/index.js",
@@ -48,8 +48,15 @@
     "url": "https://github.com/Lazack28/sms-bulk-tz/issues"
   },
   "homepage": "https://smstapsa.site",
-  "engines": { "node": ">=18.0.0" },
-  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "devDependencies": {
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
