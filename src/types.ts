@@ -10,6 +10,19 @@ export interface SendSMSOptions {
   senderId?: string;
 }
 
+export interface SendEmailOptions {
+  to: string;
+  subject: string;
+  html: string;
+  idempotencyKey?: string;
+}
+
+export interface SendEmailResponse {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+}
+
 export interface SendSMSData {
   messageId: string;
   recipients: number;

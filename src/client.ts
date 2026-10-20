@@ -1,7 +1,9 @@
 import { TapsaAPIError } from './errors.js';
-import type { BalanceResponse, SendSMSOptions, SendSMSResponse, TapsaSMSOptions } from './types.js';
+import { randomUUID } from 'node:crypto';
+import type { BalanceResponse, SendEmailOptions, SendEmailResponse, SendSMSOptions, SendSMSResponse, TapsaSMSOptions } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://api.smstapsa.my.id';
+const DEFAULT_EMAIL_BASE_URL = 'https://api.smstapsa.my.id';
 
 export class TapsaSMS {
   private readonly apiKey: string;
@@ -51,11 +53,33 @@ export class TapsaSMS {
     return this.request<BalanceResponse>('/v1/account/balance', { method: 'GET' });
   }
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
+  async sendEmail(options: SendEmailOptions): Promise<SendEmailResponse> {
+    if (!options || typeof options.to !== 'string' || options.to.trim() === '') {
+      throw new TapsaAPIError('to must be a non-empty string', { code: 'INVALID_EMAIL_RECIPIENT' });
+    }
+    if (typeof options.subject !== 'string' || options.subject.trim() === '') {
+      throw new TapsaAPIError('subject must be a non-empty string', { code: 'INVALID_EMAIL_SUBJECT' });
+    }
+    if (typeof options.html !== 'string' || options.html.trim() === '') {
+      throw new TapsaAPIError('html must be a non-empty string', { code: 'INVALID_EMAIL_HTML' });
+    }
+    if (options.idempotencyKey !== undefined && (typeof options.idempotencyKey !== 'string' || options.idempotencyKey.trim() === '')) {
+      throw new TapsaAPIError('idempotencyKey must be a non-empty string when provided', { code: 'INVALID_IDEMPOTENCY_KEY' });
+    }
+
+    const baseUrl = this.baseUrl === DEFAULT_BASE_URL ? DEFAULT_EMAIL_BASE_URL : this.baseUrl;
+    return this.request<SendEmailResponse>('/api/v1/email/send', {
+      method: 'POST',
+      body: JSON.stringify({ to: options.to, subject: options.subject, html: options.html }),
+      headers: { 'Idempotency-Key': options.idempotencyKey?.trim() || randomUUID() }
+    }, baseUrl);
+  }
+
+  private async request<T>(path: string, init: RequestInit, baseUrl = this.baseUrl): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
     try {
-      const response = await fetch(`${this.baseUrl}${path}`, {
+      const response = await fetch(`${baseUrl}${path}`, {
         ...init,
         signal: controller.signal,
         headers: {

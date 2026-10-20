@@ -1,6 +1,6 @@
 # sms-bulk-tz
 
-Official Node.js SDK for the [SMSTAPSA SMS API](https://smstapsa.site/). Send SMS messages and check account balances from Node.js applications with a lightweight, typed client.
+Official Node.js SDK for the SMSTAPSA messaging APIs. Send SMS and email messages and check account balances from Node.js applications with a lightweight, typed client.
 
 ## Installation
 
@@ -51,6 +51,27 @@ const balance = await tapsa.getBalance();
 console.log(balance.data.balance, balance.data.currency);
 ```
 
+## Send Email
+
+```ts
+const email = await tapsa.sendEmail({
+  to: 'customer@example.com',
+  subject: 'Welcome',
+  html: '<p>Hello!</p>'
+});
+```
+
+Each new email gets a generated UUID idempotency key. To safely retry a pending request, supply the same `idempotencyKey` on each attempt and persist it with the request if retries must survive a server restart. Use a new key for each different email.
+
+```ts
+await tapsa.sendEmail({
+  to: 'customer@example.com',
+  subject: 'Welcome',
+  html: '<p>Hello!</p>',
+  idempotencyKey: 'stored-request-uuid'
+});
+```
+
 ## Error Handling
 
 API and validation failures throw `TapsaAPIError`, exposing `message`, `status`, `code`, `response`, and `data`.
@@ -79,6 +100,7 @@ const tapsa = new TapsaSMS({ apiKey: process.env.TAPSA_API_KEY!, baseUrl: 'https
 
 - `new TapsaSMS({ apiKey, baseUrl?, timeout? })`
 - `sendSMS({ phoneNumbers, message, senderId? })` calls `POST /v1/sms/send`.
+- `sendEmail({ to, subject, html, idempotencyKey? })` calls `POST https://api.smstapsa.my.id/api/v1/email/send` with `x-api-key` and `Idempotency-Key` headers.
 - `getBalance()` calls `GET /v1/account/balance`.
 
 All request and response interfaces are exported for TypeScript users. See the examples in [`examples/send-sms.ts`](examples/send-sms.ts) and [`examples/balance.ts`](examples/balance.ts).
