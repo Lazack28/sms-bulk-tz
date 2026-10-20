@@ -43,7 +43,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Lazack28/sms-bulk-tz"
+    "url": "git+https://github.com/Lazack28/sms-bulk-tz.git"
   },
   "bugs": {
     "url": "https://github.com/Lazack28/sms-bulk-tz/issues"
