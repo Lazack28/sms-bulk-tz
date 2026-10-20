@@ -1,6 +1,6 @@
 {
   "name": "sms-bulk-tz",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Official Node.js SDK for the SMSTAPSA SMS and email APIs",
   "type": "module",
   "main": "dist/index.js",
